@@ -20,6 +20,21 @@ void initHW();
 void Task_1ms( void* );
 void Task_2ms( void* );
 
+typedef struct st_TaskAttrib_t
+{
+	TaskFunction_t entry;
+	const char* const taskName;
+	unsigned short stackDepth;
+	void *params;
+	UBaseType_t uxPriority;
+	TaskHandle_t taskHandle;
+} TaskAttrib_t;
+
+TaskAttrib_t taskTable[] = 
+{
+
+};
+
 xQueueHandle pbq;
 
 int main(void)

@@ -12,7 +12,7 @@ SIZE=arm-none-eabi-size
 # Directory Structure
 BINDIR=output
 INCDIR=llsw/inc
-SRCDIR=llsw rtos
+SRCDIR=llsw rtos app
 
 ###
 # Find source files
