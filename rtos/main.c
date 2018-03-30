@@ -5,7 +5,7 @@
 #include "stm32f4xx_i2c.h"
 #include "stm32f4xx_rcc.h"
 /* Kernel includes. */
-#include "FreeRTOS.h"
+#include "rtos.h"
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
@@ -19,6 +19,10 @@ void initHW();
 
 void Task_1ms( void* );
 void Task_2ms( void* );
+void Task_10ms( void* );
+void Task_100ms( void* );
+void Task_1000ms( void* );
+
 
 typedef struct st_TaskAttrib_t
 {
@@ -32,95 +36,123 @@ typedef struct st_TaskAttrib_t
 
 TaskAttrib_t taskTable[] = 
 {
-
+		{
+			Task_1000ms,
+			"Task_1000ms",
+			configMINIMAL_STACK_SIZE,
+			(void*)NULL,
+			tskIDLE_PRIORITY+2,
+			NULL
+		},
+		{
+			Task_100ms,
+			"Task_100ms",
+			configMINIMAL_STACK_SIZE,
+			(void*)NULL,
+			tskIDLE_PRIORITY+2,
+			NULL
+		},
+		{
+			Task_10ms,
+			"Task_10ms",
+			configMINIMAL_STACK_SIZE,
+			(void*)NULL,
+			tskIDLE_PRIORITY+2,
+			NULL
+		},
+		{
+			Task_1ms,
+			"Task_1ms",
+			configMINIMAL_STACK_SIZE,
+			(void*)NULL,
+			tskIDLE_PRIORITY+8,
+			NULL
+		}
 };
+
+#define NO_OF_TASKS	(sizeof(taskTable)/sizeof(TaskAttrib_t))
+#define RTOS_CREATE_TASK(t)	xTaskCreate((t).entry,\
+										(t).taskName,\
+										(t).stackDepth,\
+										(t).params,\
+										(t).uxPriority,\
+										(t).taskHandle)
 
 xQueueHandle pbq;
 
 int main(void)
 {
-
-    initHW();
+	int i;
 
     /* Create IPC variables */
     pbq = xQueueCreate(10, sizeof(int));
+	task_platform_init();
+	task_app_init();
+
     if (pbq == 0) {
         while(1); /* fatal error */
     }
 
     /* Create tasks */
-    xTaskCreate(
-        ToggleLED_Timer,                 /* Function pointer */
-        "Task1",                          /* Task name - for debugging only*/
-        configMINIMAL_STACK_SIZE,         /* Stack depth in words */
-        (void*) NULL,                     /* Pointer to tasks arguments (parameter) */
-        tskIDLE_PRIORITY + 2UL,           /* Task priority*/
-        NULL                              /* Task handle */
-    );
+    for( i =0; i<NO_OF_TASKS; i++ )
+    {
+    	RTOS_CREATE_TASK(taskTable[i]);
 
-    xTaskCreate(
-        DetectButtonPress,
-        "Task2",
-        configMINIMAL_STACK_SIZE,
-        (void*) NULL,
-        tskIDLE_PRIORITY + 2UL,
-        NULL);
+    }
+    //xTaskCreate(taskTable[0].entry,taskTable[0].taskName,taskTable[0].stackDepth,taskTable[0].params,taskTable[0].uxPriority,taskTable[0].taskHandle);
 
-    xTaskCreate(
-        ToggleLED_IPC,
-        "Task3",
-        configMINIMAL_STACK_SIZE,
-        (void*) NULL,
-        tskIDLE_PRIORITY + 2UL,
-        NULL);
-    xTaskCreate( Task_1ms,
-                 "Task1ms",
-                 configMINIMAL_STACK_SIZE,
-                 (void*)NULL,
-                 tskIDLE_PRIORITY + 2UL,
-                 NULL);
+    //RTOS_CREATE_TASK(taskTable[0]);
     /* Start the RTOS Scheduler */
+
     vTaskStartScheduler();
 
     /* HALT */
     while(1);
 }
 
-void Task_1ms( void* param  )
+void Task_10ms( void* param  )
 {
-    volatile float test1 = 100.034f;
-    uint32_t i,j;
-    volatile uint32_t testVal = 100;
     TickType_t xLastWakeTime;
-    static uint8_t period = 1;
     xLastWakeTime = xTaskGetTickCount();
-    while(1) {
-        GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-        for(i = 0; i< testVal; i++) {
-            test1 = test1*test1 + 1.0023;
-            for ( j=0 ; j > 1000; j++ );
-            GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
-        }
+    while(1)
+    {
+    	task_platform_10ms();
 
-        vTaskDelayUntil( &xLastWakeTime, period );
+        vTaskDelayUntil( &xLastWakeTime, 10 );
     }
 }
-/**
- * TASK 1: Toggle LED via RTOS Timer
- */
-void ToggleLED_Timer(void *pvParameters)
+
+void Task_100ms( void* param  )
 {
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    while(1)
+    {
+    	task_platform_100ms();
 
-    while (1) {
-        GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+        vTaskDelayUntil( &xLastWakeTime, 100 );
+    }
+}
 
-        /*
-        Delay for a period of time. vTaskDelay() places the task into
-        the Blocked state until the period has expired.
-        The delay period is spacified in 'ticks'. We can convert
-        yhis in milisecond with the constant portTICK_RATE_MS.
-        */
-        vTaskDelay( 1000 );
+void Task_1000ms( void* param  )
+{
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    while(1)
+    {
+    	task_platform_1000ms();
+
+        vTaskDelayUntil( &xLastWakeTime, 1000 );
+    }
+}
+
+void Task_1ms( void* param  )
+{
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    while(1) {
+    	task_platform_1ms();
+        vTaskDelayUntil( &xLastWakeTime, 1 );
     }
 }
 
@@ -170,69 +202,5 @@ void ToggleLED_IPC(void *pvParameters)
  */
 void initHW()
 {
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitTypeDef GPIO_InitStructure2;
-    GPIO_InitTypeDef GPIO_InitStructure_I2S;
-    I2S_InitTypeDef I2S_InitType;
-    I2C_InitTypeDef I2C_InitType;
 
-    // Init LED
-    /* Init for GPIO_A ( I2S_WS signal), GPIO B (I2C_SDA & I2C_SCL),
-    GPIOC (I2S_MCK, I2S_SCK, I2S_SD) and GPIOD (Reset pin on CS43L22) */
-    RCC_AHB1PeriphClockCmd( RCC_AHB1Periph_GPIOA |
-                            RCC_AHB1Periph_GPIOB |
-                            RCC_AHB1Periph_GPIOC |
-                            RCC_AHB1Periph_GPIOD, ENABLE);
-
-    /* Init clock for SPI and I2C ip */
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1 | RCC_APB1Periph_SPI3, ENABLE);
-
-    /* enable clock for I2S ip */
-    RCC_PLLI2SCmd(ENABLE);
-
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    // Init PushButton
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-    GPIO_InitStructure2.GPIO_Mode = GPIO_Mode_IN;
-    GPIO_InitStructure2.GPIO_Pin =  GPIO_Pin_0;
-    GPIO_InitStructure2.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitStructure2.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_InitStructure2.GPIO_OType = GPIO_OType_PP;
-    GPIO_Init(GPIOA, &GPIO_InitStructure2);
-
-    /* Setup GPIO pin for i2s scl and sda pin ) */
-    GPIO_InitStructure_I2S.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9;
-    GPIO_InitStructure_I2S.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitStructure_I2S.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitStructure_I2S.GPIO_OType = GPIO_OType_OD;
-
-    /* set alternative function for I2S pin */
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
-
-    /* Intit type for I2S module */
-    I2S_InitType.I2S_AudioFreq = I2S_AudioFreq_48k;
-    I2S_InitType.I2S_MCLKOutput = I2S_MCLKOutput_Enable;
-    I2S_InitType.I2S_Mode = I2S_Mode_MasterTx;
-    I2S_InitType.I2S_Standard = I2S_Standard_Phillips;
-    I2S_InitType.I2S_CPOL = I2S_CPOL_Low;
-    I2S_Init( SPI3, &I2S_InitType );
-    I2S_Cmd( SPI3, ENABLE );
-
-    I2C_InitType.I2C_ClockSpeed = 100000;
-    I2C_InitType.I2C_Mode = I2C_Mode_I2C;
-    I2C_InitType.I2C_OwnAddress1 = 99;
-    I2C_InitType.I2C_Ack = I2C_Ack_Enable;
-    I2C_InitType.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-    I2C_InitType.I2C_DutyCycle = I2C_DutyCycle_2;
-    I2C_Init( I2C1, & I2C_InitType );
-    I2C_Cmd( I2C2, ENABLE );
-    
-    /* Pulse DAC reset signal to HIGH */
-    GPIO_SetBits( GPIOD, GPIO_Pin_4 );
 }
