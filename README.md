@@ -3,10 +3,6 @@ Prerequisites:
 * STM32F4 Discovery Board
 
 Install software dependencies:
-* `cd ~`
-* `sudo add-apt-repository ppa:terry.guo/gcc-arm-embedded`
-* `sudo apt-get update`
-* `sudo apt-cache policy gcc-arm-none-eabi`
 * `sudo apt-get install gcc-arm-none-eabi=4-8-2014q2-0trusty10` The latter packages contains GCC, GDB, binutils, newlib and newlib-nano libraries.
 * `sudo apt-get install build-essential git openocd` 
 * `git clone https://github.com/istarc/stm32.git`

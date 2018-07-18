@@ -10,13 +10,6 @@
 #include "timers.h"
 #include "semphr.h"
 
-#define BLOCK_
-
-void ToggleLED_Timer(void*);
-void DetectButtonPress(void*);
-void ToggleLED_IPC(void*);
-void initHW();
-
 void Task_1ms( void* );
 void Task_2ms( void* );
 void Task_10ms( void* );
@@ -78,20 +71,15 @@ TaskAttrib_t taskTable[] =
 										(t).uxPriority,\
 										(t).taskHandle)
 
-xQueueHandle pbq;
-
 int main(void)
 {
 	int i;
 
     /* Create IPC variables */
-    pbq = xQueueCreate(10, sizeof(int));
 	task_platform_init();
 	task_app_init();
 
-    if (pbq == 0) {
-        while(1); /* fatal error */
-    }
+
 
     /* Create tasks */
     for( i =0; i<NO_OF_TASKS; i++ )
@@ -99,9 +87,7 @@ int main(void)
     	RTOS_CREATE_TASK(taskTable[i]);
 
     }
-    //xTaskCreate(taskTable[0].entry,taskTable[0].taskName,taskTable[0].stackDepth,taskTable[0].params,taskTable[0].uxPriority,taskTable[0].taskHandle);
 
-    //RTOS_CREATE_TASK(taskTable[0]);
     /* Start the RTOS Scheduler */
 
     vTaskStartScheduler();
@@ -110,26 +96,49 @@ int main(void)
     while(1);
 }
 
+void Task_1ms( void* param  )
+{
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    while(1) {
+    	task_platform_1ms();
+        vTaskDelayUntil( &xLastWakeTime, 1 );
+    }
+}
+
 void Task_10ms( void* param  )
 {
+	int t_taskCounter = 0;
     TickType_t xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
     while(1)
     {
     	task_platform_10ms();
-
+    	if( 0 ==(t_taskCounter) )
+		{
+    		/* run this task every 5 time task 100ms is called */
+			task_app_500ms();
+		}
+		t_taskCounter = (t_taskCounter^0x1U);
         vTaskDelayUntil( &xLastWakeTime, 10 );
     }
 }
 
 void Task_100ms( void* param  )
 {
+	int t_taskCounter = 0;
     TickType_t xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
     while(1)
     {
     	task_platform_100ms();
-
+    	task_app_100ms();
+    	if( 0 ==(t_taskCounter) )
+		{
+    		/* run this task every 5 time task 100ms is called */
+			task_app_500ms();
+		}
+		t_taskCounter = (t_taskCounter+1)%5;
         vTaskDelayUntil( &xLastWakeTime, 100 );
     }
 }
@@ -146,61 +155,4 @@ void Task_1000ms( void* param  )
     }
 }
 
-void Task_1ms( void* param  )
-{
-    TickType_t xLastWakeTime;
-    xLastWakeTime = xTaskGetTickCount();
-    while(1) {
-    	task_platform_1ms();
-        vTaskDelayUntil( &xLastWakeTime, 1 );
-    }
-}
 
-/**
- * TASK 2: Detect Button Press
- * 			And Signal Event via Inter-Process Communication (IPC)
- */
-void DetectButtonPress(void *pvParameters)
-{
-
-    int sig = 1;
-
-    while (1) {
-        /* Detect Button Press  */
-        if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)>0) {
-            while(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)>0)
-                vTaskDelay(100 / portTICK_RATE_MS); /* Button Debounce Delay */
-            while(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)==0)
-                vTaskDelay(100 / portTICK_RATE_MS); /* Button Debounce Delay */
-
-            xQueueSendToBack(pbq, &sig, 0); /* Send Message */
-        }
-    }
-}
-
-/**
- * TASK 3: Toggle LED via Inter-Process Communication (IPC)
- *
- */
-void ToggleLED_IPC(void *pvParameters)
-{
-
-    int sig;
-    portBASE_TYPE status;
-
-    while (1) {
-        status = xQueueReceive(pbq, &sig, portMAX_DELAY); /* Receive Message */
-        /* portMAX_DELAY blocks task indefinitely if queue is empty */
-        if(status == pdTRUE) {
-            GPIO_ToggleBits(GPIOD,GPIO_Pin_14);
-        }
-    }
-}
-
-/**
- * Init HW
- */
-void initHW()
-{
-
-}

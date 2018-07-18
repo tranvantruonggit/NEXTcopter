@@ -6,6 +6,12 @@
 #include "stm32f4xx_rcc.h"
 #include "rtos.h"
 
+static void NEXTcopter_IMU_init( void );
+static void NEXTcopter_IMU_init( void )
+{
+/*setup SPI for IMU*/
+}
+
 void task_platform_init( void )
 {
     GPIO_InitTypeDef GPIO_InitStructure;

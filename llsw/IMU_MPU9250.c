@@ -26,6 +26,7 @@ const DMA_Stream_TypeDef MPU9250_DmaConf={
 
 };
 
+#if 0
 const DMA_InitTypeDef MPU9250_SpiRx_Dma =
 {
 	DMA_Channel_0,
@@ -45,7 +46,8 @@ const DMA_InitTypeDef MPU9250_SpiRx_Dma =
 	DMA_PeripheralBurst_Single
 };
 		
-
+#endif
 
 void IMU_MPU9250_Init( void )
-{}
+{
+}

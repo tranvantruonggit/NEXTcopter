@@ -16,8 +16,12 @@ SRCDIR=llsw rtos app
 
 ###
 # Find source files
-ASOURCES=$(shell find -L $(SRCDIR) -name '*.s')
-CSOURCES+=$(shell find -L $(SRCDIR) -name '*.c')
+ifeq ($(OS),Windows_NT)
+	ASOURCES=dir *.c /B/S
+else
+	ASOURCES=$(shell find -L $(SRCDIR) -name '*.s')
+	CSOURCES+=$(shell find -L $(SRCDIR) -name '*.c')
+endif
 # Find header directories
 INC=$(shell find -L . -name '*.h' -exec dirname {} \; | uniq)
 INCLUDES=$(INC:%=-I%)
