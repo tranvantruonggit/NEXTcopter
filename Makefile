@@ -1,5 +1,6 @@
 ###
 # GNU ARM Embedded Toolchain
+ifneq ($(OS),Windows_NT)
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-ld
 AR=arm-none-eabi-ar
@@ -7,7 +8,15 @@ AS=arm-none-eabi-as
 CP=arm-none-eabi-objcopy
 OD=arm-none-eabi-objdump
 SIZE=arm-none-eabi-size
-
+else
+CC="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-gcc.exe"
+LD="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-ld.exe"
+AR="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-ar.exe"
+AS="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-as.exe"
+CP="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-objcopy.exe"
+OD="C:\Program Files (x86)\GNU Tools Arm Embedded\7 2018-q2-update\bin\arm-none-eabi-objdump.exe"
+SIZE=arm-none-eabi-size
+endif
 ###
 # Directory Structure
 BINDIR=output
@@ -15,16 +24,27 @@ INCDIR=llsw/inc
 SRCDIR=llsw rtos app
 
 ###
+
+ifneq ($(OS),Windows_NT)
 # Find source files
-ifeq ($(OS),Windows_NT)
-	ASOURCES=dir *.c /B/S
-else
 	ASOURCES=$(shell find -L $(SRCDIR) -name '*.s')
 	CSOURCES+=$(shell find -L $(SRCDIR) -name '*.c')
-endif
+
 # Find header directories
-INC=$(shell find -L . -name '*.h' -exec dirname {} \; | uniq)
-INCLUDES=$(INC:%=-I%)
+	INC=$(shell find -L . -name '*.h' -exec dirname {} \; | uniq)
+	INCLUDES=$(INC:%=-I%)
+else
+# Find source files
+	FIND_UTIL=C:/MinGW/msys/1.0/bin/find.exe
+	UNIQ_UTIL=C:/MinGW/msys/1.0/bin/uniq.exe
+	
+	ASOURCES=$(shell $(FIND_UTIL) -L $(SRCDIR) -name '*.s')
+	CSOURCES+=$(shell $(FIND_UTIL) -L $(SRCDIR) -name '*.c')
+
+# Find header directories
+	INC=$(shell $(FIND_UTIL) -L . -name '*.h' -exec dirname {} \; | $(UNIQ_UTIL))
+	INCLUDES=$(INC:%=-I%)
+endif
 # Create object list
 OBJECTS=$(ASOURCES:%.s=%.o)
 OBJECTS+=$(CSOURCES:%.c=%.o)
